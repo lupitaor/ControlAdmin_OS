@@ -11,9 +11,9 @@ namespace ControlAdmin_os.Common.Entities
     {
         public int Id { get; set; }
 
-        [MaxLength(50)]
+        [MaxLength(50, ErrorMessage ="El campo {0} no puede tener mas de {1} caracteres.")]
         [Required]
-        public string Name { get; set; }
+        public string? Name { get; set; }
     }
 
 }
