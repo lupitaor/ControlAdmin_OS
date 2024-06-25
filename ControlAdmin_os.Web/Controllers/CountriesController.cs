@@ -23,19 +23,23 @@ namespace ControlAdmin_os.Web.Controllers
         public async Task<IActionResult> Index()
         {
               return _context.Countries != null ? 
-                          View(await _context.Countries.ToListAsync()) :
+                          View(await _context.Countries
+                          .Include(c=>c.Departments)
+                          .ToListAsync()) :
                           Problem("Entity set 'DataContext.Countries'  is null.");
         }
 
         // GET: Countries/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null || _context.Countries == null)
+            if (id == null)
             {
                 return NotFound();
             }
 
             var country = await _context.Countries
+                .Include(c => c.Departments)!
+                .ThenInclude(d => d.Cities)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (country == null)
             {
@@ -44,6 +48,7 @@ namespace ControlAdmin_os.Web.Controllers
 
             return View(country);
         }
+
 
         // GET: Countries/Create
         public IActionResult Create()
@@ -128,13 +133,14 @@ namespace ControlAdmin_os.Web.Controllers
                 }
                 catch (DbUpdateException dbUpdateException)
                 {
-                    if (dbUpdateException.InnerException.Message.Contains("duplicate"))
+                    if (dbUpdateException.InnerException!.Message.Contains("duplicate"))
                     {
                         ModelState.AddModelError(string.Empty, "There are a record with the same name.");
                     }
                     else
                     {
-                        ModelState.AddModelError(string.Empty, dbUpdateException.InnerException.Message);
+                        ModelState.AddModelError(string.Empty, "There are a record with the same name.");
+                        //ModelState.AddModelError(string.Empty, dbUpdateException.InnerException.Message);
                     }
                 }
                 catch (Exception exception)
@@ -166,11 +172,69 @@ namespace ControlAdmin_os.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-       
-
-        private bool CountryExists(int id)
+        public async Task<IActionResult> AddDepartment(int? id)
         {
-          return (_context.Countries?.Any(e => e.Id == id)).GetValueOrDefault();
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var country = await _context.Countries.FindAsync(id);
+            if (country == null)
+            {
+                return NotFound();
+            }
+
+            Department model = new Department { IdCountry = country.Id };
+            return View(model);
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddDepartment(Department department)
+        {
+            if (ModelState.IsValid)
+            {
+                var country = await _context.Countries
+                    .Include(c => c.Departments)
+                    .FirstOrDefaultAsync(c => c.Id == department.IdCountry);
+                if (country == null)
+                {
+                    return NotFound();
+                }
+
+                try
+                {
+                    department.Id = 0;
+                    country.Departments!.Add(department);
+                    _context.Update(country);
+                    await _context.SaveChangesAsync();
+                                        
+                    ////return RedirectToAction($"{nameof(Details)}/{country.Id}");                
+                    return RedirectToAction("Details", new { country.Id });
+
+                }
+                catch (DbUpdateException dbUpdateException)
+                {
+                    if (dbUpdateException.InnerException!.Message.Contains("duplicate"))
+                    {
+                        ModelState.AddModelError(string.Empty, "Hay un registro con el mismo nombre.");
+                    }
+                    else
+                    {
+                        ModelState.AddModelError(string.Empty, "Hay un registro con el mismo nombre.");
+                        //ModelState.AddModelError(string.Empty, dbUpdateException.InnerException.Message);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    ModelState.AddModelError(string.Empty, exception.Message);
+                }
+            }
+
+            return View(department);
+        }
+
+
     }
 }
