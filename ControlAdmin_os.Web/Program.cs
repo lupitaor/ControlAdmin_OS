@@ -14,8 +14,23 @@ builder.Services.AddDbContext<DataContext>(cfg =>
 
 });
 
+builder.Services.AddTransient<SeedDb>(); //Servicio para el Seeder 
 
 var app = builder.Build();
+
+SeedData(app); //Forzamos a que se ejecute el método que llama al seeder cuando se ejecuta el proyecto web
+
+void SeedData(WebApplication app)
+{
+    IServiceScopeFactory? scopedFactory = app.Services.GetService<IServiceScopeFactory>();
+    using (IServiceScope? scope = scopedFactory!.CreateScope())
+    {
+        SeedDb? service = scope.ServiceProvider.GetService<SeedDb>();
+        service!.SeedAsync().Wait();
+    }
+
+}
+
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
